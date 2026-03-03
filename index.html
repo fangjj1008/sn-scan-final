@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>SN码扫描工具（最终版）</title>
+    <title>SN码扫描工具（Code128优化版）</title>
     <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     
     <style>
@@ -32,7 +32,7 @@
 </head>
 <body>
     <div class="scan-container">
-        <h1>📱 SN码条形码扫描</h1>
+        <h1>📱 SN码条形码扫描（Code128优化）</h1>
         
         <div class="btn-group">
             <button id="startBtn" class="btn start-btn" onclick="startScanner()">开始扫描</button>
@@ -64,10 +64,14 @@
         const scanResult = document.getElementById('scanResult');
         const errorTips = document.getElementById('errorTips');
 
+        // 关键优化：专门针对 Code 128 调整扫描框和识别参数
         const scannerConfig = {
-            fps: 15,
-            qrbox: { width: 280, height: 120 },
-            supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CODE_128]
+            fps: 20, // 提高帧率，提升识别速度
+            qrbox: { width: 320, height: 80 }, // 更扁的扫描框，适配长条形的 Code 128
+            // 明确只启用 Code 128 格式，避免其他格式干扰
+            formatsToSupport: [
+                Html5QrcodeSupportedFormats.CODE_128
+            ]
         };
 
         function startScanner() {
@@ -79,15 +83,23 @@
             html5QrcodeInstance = new Html5Qrcode("scan-region");
 
             html5QrcodeInstance.start(
-                { facingMode: "environment" },
+                { facingMode: "environment" }, // 强制使用后置摄像头
                 scannerConfig,
                 (decodedText) => {
                     scanResult.textContent = decodedText;
                     resultBox.style.display = 'block';
-                    try { navigator.clipboard.writeText(decodedText); } catch (e) {}
+                    try {
+                        navigator.clipboard.writeText(decodedText);
+                        alert("SN码已复制到剪贴板：" + decodedText);
+                    } catch (e) {
+                        console.log("复制失败：", e);
+                    }
                     stopScanner();
                 },
-                (errorMessage) => { console.log("识别中...", errorMessage); }
+                (errorMessage) => {
+                    // 只在控制台打印，不干扰用户
+                    console.log("识别中...", errorMessage);
+                }
             ).catch((err) => {
                 errorTips.style.display = 'block';
                 errorTips.textContent = `摄像头启动失败：${err.message}。请检查权限或更换浏览器重试。`;
